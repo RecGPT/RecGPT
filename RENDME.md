@@ -1,7 +1,7 @@
-Introduction
 Title: RecGPT: Generative Personalized Prompts for Sequential Recommendation via ChatGPT Training Paradigm 
-Datasets
-Five prepared datasets are included in data folder.
+
+Datasets: Five prepared datasets are included in data folder.
+
 Train Model
 To train model on 'Beauty' dataset, change to the src folder and run following command:
 
