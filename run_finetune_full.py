@@ -1,20 +1,12 @@
-# -*- coding: utf-8 -*-
-# @Time    : 2020/4/25 22:59
-# @Author  : Hui Wang
-
 import os
 import numpy as np
 import random
 import torch
 import argparse
-
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 
 from datasets import SASRecDataset
 from trainers import FinetuneTrainer
-# from models import S3RecModel
-# from GPTrec import GPTRecModel
-#from GPTRecLinear import GPTReclinearModel
 from GPT4Rec import GPTReclinearModel
 from utils import EarlyStopping, get_user_seqs, check_path, set_seed,get_local_time
 
@@ -30,12 +22,12 @@ def main():
 
     # model args
     parser.add_argument("--model_name", default='Finetune_full', type=str)
-    parser.add_argument("--Finetune_train_Prompts", default='No', type=str, help='whether add Prompts')
+    parser.add_argument("--Finetune_train_Prompts", default='Yes', type=str, help='whether add Prompts')
     parser.add_argument("--Finetune_train_Prompts_n_1", default='Yes', type=str, help='whether add Prompts')
     parser.add_argument("--Finetune_infer_Norecall_history_prompts", default='No', type=str,help='whether add Prompts in validate and test datasets')
     parser.add_argument("--Finetune_infer_Norecall_history_Prompts_n_1_or_all", default='No', type=str,help='whether add Prompts in validate and test datasets')
     parser.add_argument("--Finetune_logit_loss", default='Yes', type=str, help="generate number of next-window")
-    parser.add_argument("--Finetune_generate_idx_next_softmax_logits", default='No', type=str, help="generate number of next-window")
+    parser.add_argument("--Finetune_generate_idx_next_softmax_logits", default='Yes', type=str, help="generate number of next-window")
     parser.add_argument("--Finetune_infer_GPT_recall_2", default='Yes', type=str, help='whether add Prompts')
     parser.add_argument("--Finetune_infer_GPT_recall_2_next_idx_is_output", default='Yes', type=str, help='whether add Prompts')
     parser.add_argument("--Finetune_infer_GPT_recall_20", default='No', type=str, help='whether add Prompts')
@@ -47,6 +39,8 @@ def main():
                         help="dimensional of position-wise feed-forward networks")
     parser.add_argument("--prompts_emb_output", default='No', type=str, help='whether add Prompts')
     parser.add_argument("--pretrainstage", default='No', type=str, help='whether add Prompts')
+    # parser.add_argument("--Finetune_train_Prompts_n_1", default='No', type=str, help='whether add Prompts')
+    # parser.add_argument("--Finetune_train_Prompts_n_1", default='No', type=str, help='whether add Prompts')
 
     parser.add_argument("--num_hidden_layers", type=int, default=2, help="number of layers")
     parser.add_argument('--num_attention_heads', default=2, type=int)
@@ -68,7 +62,7 @@ def main():
     parser.add_argument("--seed", default=42, type=int)
     parser.add_argument("--next_window_train", type=int, default=2, help="generate number of next-window")
     parser.add_argument("--next_window_test", type=int, default=2, help="generate number of next-window")
-    parser.add_argument("--infer_GPT_recall_number", type=int, default=2, help="generate number of next-window")
+    parser.add_argument("--infer_GPT_recall_number", type=int, default=20, help="generate number of next-window")
     parser.add_argument("--infer_GPT_recall_number_total", type=int, default=20, help="generate number of next-window")
     parser.add_argument("--infer_GPT_recall_number_20", type=int, default=20, help="generate number of next-window")
 
@@ -98,7 +92,11 @@ def main():
     args.nowtime = get_local_time()
 
     # save model args
-    args_str = f'{args.model_name}-{args.data_name}-{args.ckp}-{args.lr}-{args.Finetune_train_Prompts}-{args.nowtime}-{args.do_eval}-{args.next_window_train}'
+    if args.epochs == 0:
+        args_str = f'{args.data_name}-{args.num_hidden_layers}-{args.num_attention_heads}-{args.hidden_size}-{args.dim_feed_forward}-epochs-630-{args.ckp}'
+    else:
+        # save model args
+        args_str = f'{args.model_name}-{args.data_name}-{args.ckp}-{args.lr}-{args.Finetune_train_Prompts}-{args.nowtime}-{args.do_eval}-{args.next_window_train}'
 
     args.log_file = os.path.join(args.output_dir, args_str + '.txt')
     print(str(args))
@@ -127,8 +125,7 @@ def main():
     model = GPTReclinearModel(args=args)
     trainer = FinetuneTrainer(model, train_dataloader, eval_dataloader,
                               test_dataloader, args)
-    # print("args.do_eval",args.do_eval)
-    # exit()
+
     if args.do_eval:
         trainer.args.train_matrix = test_rating_matrix
         trainer.load(args.checkpoint_path)
@@ -136,7 +133,7 @@ def main():
         scores, result_info = trainer.test(0, full_sort=True)
     else:
         pretrained_path = os.path.join(args.output_dir,
-                                            f'{args.data_name}-{args.num_hidden_layers}-{args.num_attention_heads}-{args.hidden_size}-{args.dim_feed_forward}-{args.ckp}.pt')
+                                            f'{args.data_name}-{args.num_hidden_layers}-{args.num_attention_heads}-{args.hidden_size}-{args.dim_feed_forward}-epochs-630-{args.ckp}.pt')
         try:
             trainer.load(pretrained_path)
             print(f'Load Checkpoint From {pretrained_path}!')
