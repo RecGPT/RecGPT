@@ -36,3 +36,4 @@ python run_finetune_full.py --gpu_id=0 --data_name=Beauty --num_hidden_layers=1 
 ### RecGPT(Y) result 
 'H5': 0.0426, 'H10': 0.0651, 'H20': 0.0957, 'N5': 0.0283, 'N10': 0.0356, 'N20': 0.0433
 ### where (Top@{5,10} has the same result as RecGPT(X), while Top@20 has better result than RecGPT(X) )
+### recall topk@5 and 10, you can get the result as shown in paper only if change the number of m&n. 
