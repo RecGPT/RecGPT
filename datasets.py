@@ -2,7 +2,6 @@ import random
 
 import torch
 from torch.utils.data import Dataset
-
 from utils import neg_sample
 
 class PretrainDataset(Dataset):
@@ -29,12 +28,9 @@ class PretrainDataset(Dataset):
         return len(self.part_sequence)
 
     def __getitem__(self, index):
-        #print("index", index)
         sequence = self.part_sequence[index] # pos_items
-        #print("sequence", sequence)
         user_id = sequence[-1]-1
         sequence = sequence[:-1]
-        # sample neg item for every masked item
         masked_item_sequence = []
         neg_items = []
         # Masked Item Prediction
@@ -45,7 +41,6 @@ class PretrainDataset(Dataset):
         #     #     masked_item_sequence.append(self.args.mask_id)
         #     #     neg_items.append(neg_sample(item_set, self.args.item_size))
         #     # else:
-        #     # 只在最后position mask
         #     masked_item_sequence.append(item)
         #     neg_items.append(item)
         # # add mask at the last position
@@ -119,7 +114,6 @@ class SASRecDataset(Dataset):
         # train [0, 1, 2, 3]
         # target [1, 2, 3, 4]
 
-        # 监督学习
         # 0, 1, 2, 3
         # label 4
 
@@ -144,7 +138,6 @@ class SASRecDataset(Dataset):
             # input_ids = itemss[:-2]
             # target_pos = itemss[1:-1]
             # answer = [itemss[-2]]
-
 
         else:
             input_ids = items[:-1]

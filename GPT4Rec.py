@@ -7,7 +7,6 @@ from moduleslinear.feature_map import elu_feature_map
 from fast_transformers.masking import TriangularCausalMask
 import numpy as np
 class GPTReclinearModel(nn.Module):
-    "GPT Language model"
     def __init__(self, args):
         super(GPTReclinearModel, self).__init__()
         self.args = args
@@ -52,15 +51,10 @@ class GPTReclinearModel(nn.Module):
         _, predict_logits = self.forward(user_id, input_ids, segments)
         loss = F.cross_entropy(predict_logits.view(-1, predict_logits.size(-1)), pos_ids.view(-1), ignore_index=0)
         """
-        # print("input_ids", input_ids[0])
-        # print("pos_ids", pos_ids[0])
-        # print("neg_ids", neg_ids[0])
-        # exit()
         segments = torch.zeros(input_ids.size(), device=input_ids.device, dtype=torch.long)
         seq_out, _ = self.forward(user_id, input_ids, segments)
         pos_emb = self.decoder.item_embeddings(pos_ids)
         neg_emb = self.decoder.item_embeddings(neg_ids)
-        # [batch*seq_len hidden_size]
         pos = pos_emb.view(-1, pos_emb.size(2))
         neg = neg_emb.view(-1, neg_emb.size(2))
         seq_emb = seq_out.view(-1, self.args.hidden_size)  # [batch*seq_len hidden_size]
@@ -139,26 +133,12 @@ class GPTReclinearModel(nn.Module):
         origin_target_segment = segment
         n = input_id.size()[1]
         GPT_generate = n-rec_new_item
-        # print("origin_input_id",origin_input_id[2])
-        # print("origin_target_pos", origin_target_pos[2])
-        # print("origin_target_neg", origin_target_neg[0])
-        # print("origin_target_segment", origin_target_segment[0])
-        # print("GPT_generate",GPT_generate)
-        # print("n", n)
-        # exit()
         for i in range(n):
             if i >= GPT_generate:
-                # target_pos[:, i] = origin_target_pos[:, i]
-                #  target_pos = torch.cat((target_pos[:, 1:], torch.unsqueeze(origin_target_pos[:, i], 1)), dim=1)
-                # target_pos = torch.cat((target_pos[:, 1:], torch.unsqueeze(origin_target_pos[:, i-1], 1)), dim=1)
-                # target_neg = torch.cat((target_neg[:, 1:], torch.unsqueeze(origin_target_neg[:, i-1], 1)), dim=1)
-                # print("target_pos",target_pos.size())
-                # exit()
                 input_id = input_id
                 target_pos = target_pos
                 target_neg = target_neg
                 segment = segment
-                #for j in range(1):
                 ones_seg = torch.ones(input_id.size()[0], 1, device=input_id.device, dtype=torch.long)
                 zero_pos = torch.zeros(input_id.size()[0], 1, device=input_id.device, dtype=torch.long)
                 if self.args.Finetune_generate_idx_next_softmax_logits == "Yes":
@@ -170,18 +150,12 @@ class GPTReclinearModel(nn.Module):
                     _, _, idx_next = self.forward(user_id, input_id, segment)
                 new_id = torch.cat((input_id[:, 1:], idx_next), dim=1)
                 input_id = new_id
-                # target_pos = torch.cat((target_pos[:, 1:], zero_pos), dim=1)
-                # target_neg = torch.cat((target_neg[:, 1:], zero_pos), dim=1)
                 segment = torch.cat((segment[:, 1:], ones_seg), dim=1)
-                #
-                # input_id = torch.cat((input_id[:, 1:], torch.unsqueeze(origin_input_id[:, i], 1)), dim=1)
                 target_pos = torch.cat((target_pos[:, 1:], torch.unsqueeze(origin_target_pos[:, i], 1)), dim=1)
                 target_neg = torch.cat((target_neg[:, 1:], torch.unsqueeze(origin_target_neg[:, i], 1)), dim=1)
-                # segment = torch.cat((segment[:, 1:], torch.unsqueeze(origin_target_segment[:, i], 1)), dim=1)
             else:
                 if i == GPT_generate-1:
                     input_id = torch.cat((input_id[:, 1:], torch.unsqueeze(origin_input_id[:, i], 1)), dim=1)
-                    # target_pos = torch.cat((target_pos[:, 1:], torch.unsqueeze(origin_target_pos[:, i], 1)), dim=1)
                     target_pos = torch.cat((target_pos[:, 1:], torch.unsqueeze(origin_target_pos[:, i], 1)), dim=1)
                     target_neg = torch.cat((target_neg[:, 1:], torch.unsqueeze(origin_target_neg[:, i], 1)), dim=1)
                     segment = torch.cat((segment[:, 1:], torch.unsqueeze(origin_target_segment[:, i], 1)), dim=1)
@@ -190,14 +164,7 @@ class GPTReclinearModel(nn.Module):
                     input_id = torch.cat((input_id[:, 1:], torch.unsqueeze(origin_input_id[:, i], 1)), dim=1)
                     target_pos = torch.cat((target_pos[:, 1:], torch.unsqueeze(origin_target_pos[:, i], 1)), dim=1)
                     target_neg = torch.cat((target_neg[:, 1:],  torch.unsqueeze(origin_target_neg[:, i], 1)), dim=1)
-                    # target_pos = torch.cat((target_pos[:, 1:], zero_pos), dim=1)
-                    # target_neg = torch.cat((target_neg[:, 1:], zero_pos), dim=1)
                     segment = torch.cat((segment[:, 1:], torch.unsqueeze(origin_target_segment[:, i], 1)), dim=1)
-        # print("input_id", input_id[2])
-        # print("target_pos", target_pos[2])
-        # # # print("target_neg", target_neg[0])
-        # # print("segment", segment[0])
-        # exit()
         return input_id, target_pos, target_neg, segment
 
     @torch.no_grad()

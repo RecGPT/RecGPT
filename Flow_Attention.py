@@ -3,7 +3,6 @@ import torch.nn as nn
 
 
 ## Core code for Flow-Attention, Please refer to each folder for corresponding experiments
-
 class Flow_Attention(nn.Module):
     # flow attention in normal version
     def __init__(self, d_input, d_model, d_output, n_heads, drop_out=0.05, eps=1e-6):

@@ -2,7 +2,6 @@ import numpy as np
 import random
 import torch
 from torch.utils.data import DataLoader, RandomSampler
-
 import os
 import argparse
 
@@ -63,12 +62,7 @@ def main():
 
     args.data_file = args.data_dir + args.data_name + '.txt'
 
-    # concat all user_seq get a long sequence, from which sample neg segment for SP
-    # sasrec
-    if args.data_process == 'SASRec':
-        users, user_seq, max_item, _, _ = get_user_seqs(args.data_file)
-    else:
-        users, user_seq, max_item, long_sequence = get_user_seqs_long(args.data_file)
+    users, user_seq, max_item, _, _ = get_user_seqs(args.data_file)
 
     args.user_size = len(users) + 2
     args.item_size = max_item + 2
@@ -84,10 +78,7 @@ def main():
     trainer = PretrainTrainer(model, None, None, None, args)
 
     for epoch in range(args.pre_epochs):
-        if args.data_process == 'SASRec':
-            pretrain_dataset = SASRecDataset(args, user_seq, data_type='train')
-        else:
-            pretrain_dataset = PretrainDataset(args, user_seq, long_sequence)
+        pretrain_dataset = SASRecDataset(args, user_seq, data_type='train')
         pretrain_sampler = RandomSampler(pretrain_dataset)
         pretrain_dataloader = DataLoader(pretrain_dataset, sampler=pretrain_sampler, batch_size=args.pre_batch_size)
         trainer.pretrain(epoch, pretrain_dataloader)

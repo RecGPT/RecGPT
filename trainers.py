@@ -1,7 +1,3 @@
-# -*- coding: utf-8 -*-
-# @Time    : 2020/3/30 11:06
-# @Author  : Hui Wang
-
 import time
 import numpy as np
 import tqdm
@@ -66,7 +62,7 @@ class Trainer:
             f.write(str(post_fix) + '\n')
         return [HIT_1, NDCG_1, HIT_5, NDCG_5, HIT_10, NDCG_10, MRR], str(post_fix)
 
-    def get_full_sort_score_20(self, epoch, answers, pred_list):
+    def get_full_sort_score_20_0(self, epoch, answers, pred_list):
         recall, ndcg = [], []
         for k in [5, 10, 20]:
             recall.append(recall_at_k(answers, pred_list, k))
@@ -81,6 +77,20 @@ class Trainer:
             f.write(str(post_fix) + '\n')
 
         return [recall[0],recall[1],recall[2], ndcg[0],ndcg[1],ndcg[2]], str(post_fix)
+    def get_full_sort_score_20(self, epoch, answers, pred_list):
+        recall, ndcg = [], []
+        for k in [20]:
+            recall.append(recall_at_k(answers, pred_list, k))
+            ndcg.append(ndcg_k(answers, pred_list, k))
+        post_fix = {
+            "Epoch": epoch,
+            "H20": eval('{:.4f}'.format(recall[0])),"N20": eval('{:.4f}'.format(ndcg[0]))
+        }
+        print(post_fix)
+        with open(self.args.log_file, 'a') as f:
+            f.write(str(post_fix) + '\n')
+
+        return [recall[0], ndcg[0]], str(post_fix)
 
     def get_full_sort_score_10(self, epoch, answers, pred_list):
         recall, ndcg = [], []
@@ -153,7 +163,7 @@ class Trainer:
     def predict_full(self, seq_out):
         # [item_num hidden_size]
         test_item_emb = self.model.decoder.item_embeddings.weight
-        # [batch hidden_size ]
+        # [batch hidden_size]
         rating_pred = torch.matmul(seq_out, test_item_emb.transpose(0, 1))
         return rating_pred
 
@@ -164,12 +174,10 @@ class Trainer:
         for j in range(2):  # infer_GPT_generate
             if j == 0:
                 ind_num = infer_GPT_generate
-                # ones_seg = torch.ones(input_id.size()[0], ind_num, device=input_id.device, dtype=torch.long) # one_seg=1
                 ones_seg = torch.zeros(input_id.size()[0], 1, device=input_id.device,
                                       dtype=torch.long)  # one_seg=1
             else:
                 ind_num = infer_GPT_recall_total-infer_GPT_generate
-                # ones_seg = torch.ones(input_id.size()[0], ind_num, device=input_id.device, dtype=torch.long)
                 ones_seg = torch.ones(input_id.size()[0], 1, device=input_id.device, dtype=torch.long)
             segment = torch.cat((segment, ones_seg), dim=1)[:,-self.args.max_seq_length:]
             if self.args.Finetune_generate_idx_next_softmax_logits == "Yes":
@@ -188,7 +196,6 @@ class Trainer:
                 recommend_output = torch.squeeze(recommend_output)
             else:
                 recommend_output = recommend_output[:, -1, :]
-            # 用作推荐
             if j == 0:
                 rating_pred = self.predict_full(recommend_output)
                 rating_pred = rating_pred.cpu().data.numpy().copy()
@@ -196,25 +203,18 @@ class Trainer:
                 batch_user_index = user_ids.cpu().numpy()
                 rating_pred[self.args.train_matrix[batch_user_index].toarray() > 0] = 0
                 ind = np.argpartition(rating_pred, -ind_num)[:, -ind_num:]
-                # 根据返回的下标 从对应维度分别取对应的值 得到每行topk的子表
                 arr_ind = rating_pred[np.arange(len(rating_pred))[:, None], ind]
-                # 对子表进行排序 得到从大到小的顺序
                 arr_ind_argsort = np.argsort(arr_ind)[np.arange(len(rating_pred)), ::-1]
-                # 再取一次 从ind中取回 原来的下标
                 batch_pred_list = ind[np.arange(len(rating_pred))[:, None], arr_ind_argsort]
                 recall_list.append(batch_pred_list)
             else:
                 rating_pred = self.predict_full(recommend_output)
                 rating_pred = rating_pred.cpu().data.numpy().copy()
-                # print("user_ids",user_ids)
                 batch_user_index = user_ids.cpu().numpy()
                 rating_pred[self.args.train_matrix[batch_user_index].toarray() > 0] = 0
                 ind = np.argpartition(rating_pred, -100)[:, -100:]
-                # 根据返回的下标 从对应维度分别取对应的值 得到每行topk的子表
                 arr_ind = rating_pred[np.arange(len(rating_pred))[:, None], ind]
-                # 对子表进行排序 得到从大到小的顺序
                 arr_ind_argsort = np.argsort(arr_ind)[np.arange(len(rating_pred)), ::-1]
-                # 再取一次 从ind中取回 原来的下标
                 batch_pred_list = ind[np.arange(len(rating_pred))[:, None], arr_ind_argsort]
                 recall_0 = recall_list[0].tolist()
                 batch_pred_list_i = []
@@ -224,11 +224,8 @@ class Trainer:
                     batch_pred_list_i.append(T[:20])
                 batch_pred_list_j = torch.tensor(batch_pred_list_i)[:,:ind_num].tolist()
                 recall_list.append(batch_pred_list_j)
-        # exit()
         recall_0 = recall_list[0].tolist()
-        #print("recall_0",recall_0[0])
         recall_1 = recall_list[1]
-        #print("recall_1", recall_1[0])
         recall_result = np.concatenate((recall_0,recall_1),axis=1)
 
         return recall_result
@@ -267,8 +264,6 @@ class PretrainTrainer(Trainer):
                 user_id, input_ids, pos_items, neg_items = batch
 
             gpt_loss = self.model.pretrain(user_id,input_ids, pos_items, neg_items)
-            # print("gpt_loss", gpt_loss)
-            # exit()
             self.optim.zero_grad()
             gpt_loss.backward()
             self.optim.step()
@@ -331,9 +326,6 @@ class FinetuneTrainer(Trainer):
                 if self.args.Finetune_logit_loss == "No":
                     self.loss = self.cross_entropy(sequence_output, target_pos, target_neg)
                 else:
-                    # print("predict_logits",predict_logits[0])
-                    # print("target_pos", target_pos[0])
-                    # exit()
                     self.loss = F.cross_entropy(predict_logits.view(-1, predict_logits.size(-1)), target_pos.view(-1),ignore_index=0)
 
                 self.optim.zero_grad()
@@ -373,14 +365,9 @@ class FinetuneTrainer(Trainer):
                         rating_pred = rating_pred.cpu().data.numpy().copy()
                         batch_user_index = user_ids.cpu().numpy()
                         rating_pred[self.args.train_matrix[batch_user_index].toarray() > 0] = 0
-                        ind = np.argpartition(rating_pred, -20)[:, -20:] # 20
-                        # 根据返回的下标 从对应维度分别取对应的值 得到每行topk的子表
+                        ind = np.argpartition(rating_pred, -20)[:, -20:]
                         arr_ind = rating_pred[np.arange(len(rating_pred))[:, None], ind]
-                        #print("arr_ind", arr_ind[0])
-                        # 对子表进行排序 得到从大到小的顺序
-                        arr_ind_argsort = np.argsort(arr_ind)[np.arange(len(rating_pred)), ::-1]# 20
-                        #print("arr_ind_argsort", arr_ind_argsort[0])
-                        # 再取一次 从ind中取回 原来的下标
+                        arr_ind_argsort = np.argsort(arr_ind)[np.arange(len(rating_pred)), ::-1]
                         batch_pred_list = ind[np.arange(len(rating_pred))[:, None], arr_ind_argsort]
                     else:
                         if self.args.Finetune_infer_GPT_recall_20 == "Yes":
@@ -402,10 +389,7 @@ class FinetuneTrainer(Trainer):
                     else:
                         pred_list = np.append(pred_list, batch_pred_list, axis=0)
                         answer_list = np.append(answer_list, answers.cpu().data.numpy(), axis=0)
-                # print("answer_list",answer_list[0])
-                # print("pred_list", pred_list[0])
-                # # print("pred_list_Len", len(pred_list[0]))
-                # exit()
+
                 if self.args.infer_GPT_recall_number_total == 20:
                     return self.get_full_sort_score_20(epoch, answer_list, pred_list)
                 elif self.args.infer_GPT_recall_number_total == 10:

@@ -1,9 +1,4 @@
-# -*- coding:utf-8 -*-
-# __author__ = 'wanghui'
-# __date__ = '2020/03/30 10:53'
-
 import numpy as np
-
 import copy
 import math
 import torch
@@ -65,7 +60,6 @@ class Embeddings(nn.Module):
         items_embeddings = self.item_embeddings(input_ids)
         position_embeddings = self.position_embeddings(position_ids)
         embeddings = items_embeddings + position_embeddings
-        # 修改属性
         embeddings = self.LayerNorm(embeddings)
         embeddings = self.dropout(embeddings)
         return embeddings
@@ -87,7 +81,6 @@ class SelfAttention(nn.Module):
 
         self.attn_dropout = nn.Dropout(args.attention_probs_dropout_prob)
 
-        # 做完self-attention 做一个前馈全连接 LayerNorm 输出
         self.dense = nn.Linear(args.hidden_size, args.hidden_size)
         self.LayerNorm = LayerNorm(args.hidden_size, eps=1e-12)
         self.out_dropout = nn.Dropout(args.hidden_dropout_prob)
@@ -110,16 +103,9 @@ class SelfAttention(nn.Module):
         attention_scores = torch.matmul(query_layer, key_layer.transpose(-1, -2))
 
         attention_scores = attention_scores / math.sqrt(self.attention_head_size)
-        # Apply the attention mask is (precomputed for all layers in BertModel forward() function)
-        # [batch_size heads seq_len seq_len] scores
-        # [batch_size 1 1 seq_len]
         attention_scores = attention_scores + attention_mask
 
-        # Normalize the attention scores to probabilities.
         attention_probs = nn.Softmax(dim=-1)(attention_scores)
-        # This is actually dropping out entire tokens to attend to, which might
-        # seem a bit unusual, but is taken from the original Transformer paper.
-        # Fixme
         attention_probs = self.attn_dropout(attention_probs)
         context_layer = torch.matmul(attention_probs, value_layer)
         context_layer = context_layer.permute(0, 2, 1, 3).contiguous()
