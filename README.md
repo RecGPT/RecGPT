@@ -14,7 +14,7 @@ Such as Dataset Beauty
 python run_pretrain.py --data_name=Beauty --gpu_id=1 --num_hidden_layers=1 --num_attention_heads=2 --pre_epochs=300 --lr=0.001 --data_process=SASRec --hidden_size=256 --dim_feed_forward=512
 ```
 
-# Prompts-tune RecGPT(X) and RecGPT(Y)
+# Prompts-tune RecGPT-1 and RecGPT
 
 ## RecGPT-1
 ### Run
